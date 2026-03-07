@@ -1,5 +1,7 @@
-import { useRef, useState } from "react";
-import { Camera, ImagePlus, Loader2 } from "lucide-react";
+import { useRef, useState, useCallback } from "react";
+import ReactCrop, { type Crop, type PixelCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
+import { Camera, ImagePlus, Loader2, Check, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,11 +15,43 @@ interface ImageUploaderProps {
   isUploading?: boolean;
 }
 
+function getCroppedImageBase64(
+  image: HTMLImageElement,
+  crop: PixelCrop
+): string {
+  const canvas = document.createElement("canvas");
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+  canvas.width = crop.width * scaleX;
+  canvas.height = crop.height * scaleY;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  ctx.drawImage(
+    image,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
 export default function ImageUploader({
   onImageSelected,
   isUploading = false,
 }: ImageUploaderProps) {
-  const [showDialog, setShowDialog] = useState(false);
+  const [showMethodDialog, setShowMethodDialog] = useState(false);
+  const [showCropDialog, setShowCropDialog] = useState(false);
+  const [rawImage, setRawImage] = useState<string>("");
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const imgRef = useRef<HTMLImageElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -27,18 +61,57 @@ export default function ImageUploader({
 
     const reader = new FileReader();
     reader.onload = () => {
-      const base64 = reader.result as string;
-      onImageSelected(base64);
-      setShowDialog(false);
+      setRawImage(reader.result as string);
+      setShowMethodDialog(false);
+      setCrop(undefined);
+      setCompletedCrop(undefined);
+      setShowCropDialog(true);
     };
     reader.readAsDataURL(file);
     e.target.value = "";
   };
 
+  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    imgRef.current = e.currentTarget;
+  }, []);
+
+  const handleConfirmCrop = () => {
+    if (!imgRef.current) return;
+
+    if (completedCrop && completedCrop.width > 0 && completedCrop.height > 0) {
+      const croppedBase64 = getCroppedImageBase64(imgRef.current, completedCrop);
+      if (croppedBase64) {
+        onImageSelected(croppedBase64);
+      }
+    } else {
+      onImageSelected(rawImage);
+    }
+
+    setShowCropDialog(false);
+    setRawImage("");
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+  };
+
+  const handleUseOriginal = () => {
+    onImageSelected(rawImage);
+    setShowCropDialog(false);
+    setRawImage("");
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+  };
+
+  const handleCancelCrop = () => {
+    setShowCropDialog(false);
+    setRawImage("");
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+  };
+
   return (
     <>
       <Button
-        onClick={() => setShowDialog(true)}
+        onClick={() => setShowMethodDialog(true)}
         disabled={isUploading}
         className="w-full h-32 border-2 border-dashed border-primary/30 bg-primary/5 text-primary rounded-2xl flex flex-col gap-2"
         variant="ghost"
@@ -60,7 +133,7 @@ export default function ImageUploader({
         )}
       </Button>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog open={showMethodDialog} onOpenChange={setShowMethodDialog}>
         <DialogContent className="max-w-[320px] rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-center">选择上传方式</DialogTitle>
@@ -84,6 +157,67 @@ export default function ImageUploader({
               <ImagePlus className="w-5 h-5 text-primary" />
               从相册选择
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCropDialog} onOpenChange={(open) => { if (!open) handleCancelCrop(); }}>
+        <DialogContent className="max-w-[95vw] sm:max-w-[500px] rounded-2xl p-3">
+          <DialogHeader>
+            <DialogTitle className="text-center text-sm">
+              预览和裁剪图片
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-muted-foreground text-center">
+              拖拽选择要保留的区域，或直接使用原图
+            </p>
+            <div className="max-h-[50vh] overflow-auto rounded-lg bg-muted/30 flex items-center justify-center">
+              {rawImage && (
+                <ReactCrop
+                  crop={crop}
+                  onChange={(c) => setCrop(c)}
+                  onComplete={(c) => setCompletedCrop(c)}
+                >
+                  <img
+                    src={rawImage}
+                    alt="待裁剪图片"
+                    onLoad={onImageLoad}
+                    className="max-w-full max-h-[48vh] object-contain"
+                    data-testid="img-crop-preview"
+                  />
+                </ReactCrop>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 gap-1.5"
+                onClick={handleCancelCrop}
+                data-testid="button-cancel-crop"
+              >
+                <X className="w-4 h-4" />
+                取消
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 gap-1.5"
+                onClick={handleUseOriginal}
+                data-testid="button-use-original"
+              >
+                <RotateCcw className="w-4 h-4" />
+                使用原图
+              </Button>
+              <Button
+                className="flex-1 gap-1.5"
+                onClick={handleConfirmCrop}
+                disabled={!completedCrop || completedCrop.width === 0}
+                data-testid="button-confirm-crop"
+              >
+                <Check className="w-4 h-4" />
+                确认裁剪
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

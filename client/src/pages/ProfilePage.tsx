@@ -15,6 +15,7 @@ import {
 import { questionService, directoryService } from "@/lib/services";
 import { db } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/components/ThemeProvider";
 import {
   BookOpen,
   FolderOpen,
@@ -23,10 +24,13 @@ import {
   Info,
   Smartphone,
   Brain,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 export default function ProfilePage() {
   const { toast } = useToast();
+  const { theme, toggleTheme } = useTheme();
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [totalDirs, setTotalDirs] = useState(0);
   const [showClearDialog, setShowClearDialog] = useState(false);
@@ -53,7 +57,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen pb-20 bg-background">
+    <div className="min-h-screen pb-24 bg-background">
       <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background px-4 pt-8 pb-6">
         <div className="max-w-lg mx-auto">
           <h1 className="text-2xl font-bold tracking-tight">我的</h1>
@@ -84,6 +88,38 @@ export default function ProfilePage() {
                 <p className="text-[10px] text-muted-foreground">目录数量</p>
               </div>
             </div>
+          </div>
+        </Card>
+
+        <Card className="p-4 border-card-border">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {theme === "light" ? (
+                <Sun className="w-4 h-4 text-chart-4" />
+              ) : (
+                <Moon className="w-4 h-4 text-chart-4" />
+              )}
+              <h3 className="font-semibold text-sm">外观模式</h3>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleTheme}
+              className="gap-2"
+              data-testid="button-toggle-theme"
+            >
+              {theme === "light" ? (
+                <>
+                  <Moon className="w-4 h-4" />
+                  深色模式
+                </>
+              ) : (
+                <>
+                  <Sun className="w-4 h-4" />
+                  浅色模式
+                </>
+              )}
+            </Button>
           </div>
         </Card>
 

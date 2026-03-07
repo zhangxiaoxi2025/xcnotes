@@ -136,7 +136,7 @@ export default function DirectoriesPage() {
   };
 
   return (
-    <div className="min-h-screen pb-20 bg-background">
+    <div className="min-h-screen pb-24 bg-background">
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="max-w-lg mx-auto flex items-center justify-between gap-2 px-4 h-14">
           <div className="flex items-center gap-2">

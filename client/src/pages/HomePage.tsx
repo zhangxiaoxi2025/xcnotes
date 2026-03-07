@@ -93,7 +93,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen pb-20 bg-background">
+    <div className="min-h-screen pb-24 bg-background">
       <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background px-4 pt-8 pb-6">
         <div className="max-w-lg mx-auto">
           <h1 className="text-2xl font-bold tracking-tight" data-testid="text-app-title">

@@ -1,4 +1,4 @@
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { Home, FolderOpen, User } from "lucide-react";
 
 const navItems = [
@@ -8,7 +8,7 @@ const navItems = [
 ];
 
 export default function BottomNav() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
 
   const isActive = (path: string) => {
     if (path === "/") return location === "/";
@@ -24,30 +24,31 @@ export default function BottomNav() {
         {navItems.map((item) => {
           const active = isActive(item.path);
           return (
-            <Link key={item.path} href={item.path}>
-              <button
-                className={`flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-xl transition-all duration-200 ${
-                  active
-                    ? "text-primary"
-                    : "text-muted-foreground"
+            <button
+              key={item.path}
+              type="button"
+              onClick={() => navigate(item.path)}
+              className={`flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-xl transition-all duration-200 touch-manipulation ${
+                active
+                  ? "text-primary"
+                  : "text-muted-foreground"
+              }`}
+              data-testid={`nav-${item.label}`}
+            >
+              <item.icon
+                className={`transition-all duration-200 pointer-events-none ${
+                  active ? "w-6 h-6" : "w-5 h-5"
                 }`}
-                data-testid={`nav-${item.label}`}
+                strokeWidth={active ? 2.5 : 2}
+              />
+              <span
+                className={`text-[10px] font-medium transition-all duration-200 pointer-events-none ${
+                  active ? "font-semibold" : ""
+                }`}
               >
-                <item.icon
-                  className={`transition-all duration-200 ${
-                    active ? "w-6 h-6" : "w-5 h-5"
-                  }`}
-                  strokeWidth={active ? 2.5 : 2}
-                />
-                <span
-                  className={`text-[10px] font-medium transition-all duration-200 ${
-                    active ? "font-semibold" : ""
-                  }`}
-                >
-                  {item.label}
-                </span>
-              </button>
-            </Link>
+                {item.label}
+              </span>
+            </button>
           );
         })}
       </div>
