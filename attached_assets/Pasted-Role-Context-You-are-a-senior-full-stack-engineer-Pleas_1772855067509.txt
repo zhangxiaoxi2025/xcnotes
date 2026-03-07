@@ -1,0 +1,70 @@
+Role & Context
+You are a senior full-stack engineer. Please help me build a mobile-first Web App from scratch called "智能错题本" (Smart Error Book).
+This app will have NO backend server initially. It will rely entirely on the frontend and the browser's local storage to achieve a zero-cost MVP.
+CRITICAL REQUIREMENT: The entire User Interface (UI), including all buttons, placeholders, alerts, and text, MUST be strictly in Simplified Chinese.
+
+Tech Stack
+
+Frontend Framework: React + TypeScript + Vite
+
+Styling: Tailwind CSS (ensure a beautiful, responsive mobile layout)
+
+Routing: React Router
+
+Local Database: Dexie.js (wrapper for IndexedDB for structured local storage)
+
+Charting Library: ECharts (for rendering the knowledge graph)
+
+Export Tool: html-to-image (for exporting the summary and graph as a local PNG image)
+
+AI API: Google Gemini API (use the gemini-1.5-flash model)
+
+Core Architecture Requirements (Future-proofing for Cloud Migration)
+
+Global UUIDs: All data primary keys (IDs) MUST use UUID v4. Never use auto-incrementing integers.
+
+Data Service Isolation: Create a dedicated db.ts or services/ directory to encapsulate all Dexie.js CRUD operations. Do not write direct database logic inside UI components.
+
+Image Storage: Images uploaded or captured by the user must be converted to Base64 strings and stored locally in IndexedDB.
+
+Database Models (Dexie.js Schema)
+Define the following two core tables:
+
+directories: id (UUID), name (string), parentId (UUID, null for root), createdAt (timestamp). Support up to 3 levels of hierarchy.
+
+questions: id (UUID), directoryId (UUID), imageBase64 (string), analysisJson (string, stores the parsed JSON from AI), createdAt (timestamp).
+
+Core Features
+
+Image Upload: Support taking photos via the mobile camera or uploading from the gallery.
+
+AI Smart Parsing: Upon image upload, call the Gemini 1.5 Flash API for OCR and logical parsing.
+
+Directory Management: Users can create, rename, and delete directories (up to 3 levels). Parsed questions are saved to specific directories and displayed chronologically.
+
+Knowledge Graph & Summary: Inside a directory, users can multi-select or "select all" questions. Extract the knowledge_points from the analysisJson of the selected questions, call the Gemini API again to summarize nodes and relationships, and render a visual connection graph using ECharts.
+
+One-Click Local Export: Add a "保存到本地" (Save to Local) button on the Knowledge Graph & Summary page. Use html-to-image to capture the entire summary text and the ECharts canvas as a high-quality PNG, and trigger a local download to the user's device.
+
+AI Prompt Setup (Crucial)
+When calling Gemini to parse the error question, use the following System Prompt (keep the prompt itself in Chinese so the AI responds in Chinese), and require a pure JSON output:
+
+"你是一个风趣幽默、喜欢用通俗易懂的段子解释复杂概念的金牌教师。请识别用户上传的题目图片，并按以下 JSON 格式输出解析结果：
+{
+'question_text': '识别出的原题题干',
+'knowledge_points': ['考察知识点1', '考察知识点2'],
+'humorous_explanation': '用风趣幽默、深入浅出的语言为你讲解这道题的核心陷阱和解题思路',
+'options_analysis': [
+{'option': 'A', 'is_correct': false, 'related_knowledge': '相关知识点', 'why_wrong': '错在哪里（如果是错误选项）/ 为什么对（如果是正确选项）'}
+]
+}"
+
+Step-by-step Execution Plan
+Please write the code step by step:
+Step 1: Initialize the project, configure Tailwind CSS and routing, and build the mobile bottom navigation bar (首页/Home, 目录/Directories, 我的/Profile). Remember, UI must be in Chinese.
+Step 2: Set up the Dexie.js database schema and the data isolation service layer.
+Step 3: Implement the image upload component and the Gemini API calling logic.
+Step 4: Implement multi-level directory creation and saving parsed questions into them.
+Step 5: Implement question multi-selection, ECharts knowledge graph rendering, and the one-click html-to-image export feature.
+
+Please start with Step 1 and provide the core file structure and initialization code.
