@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,6 +27,8 @@ import {
   TrendingUp,
   Sparkles,
   ArrowRight,
+  Search,
+  X,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -40,6 +42,11 @@ export default function HomePage() {
   const [showDirSelect, setShowDirSelect] = useState(false);
   const [selectedDirId, setSelectedDirId] = useState<string>("");
   const [pendingImage, setPendingImage] = useState<string>("");
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchResults, setSearchResults] = useState<Question[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchIdRef = useRef(0);
 
   const loadData = async () => {
     const [recent, dirs, count] = await Promise.all([
@@ -56,6 +63,42 @@ export default function HomePage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
+
+  const handleSearchChange = (value: string) => {
+    setSearchKeyword(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!value.trim()) {
+      searchIdRef.current++;
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    const currentId = ++searchIdRef.current;
+    searchTimerRef.current = setTimeout(async () => {
+      const results = await questionService.search(value);
+      if (searchIdRef.current === currentId) {
+        setSearchResults(results);
+        setIsSearching(false);
+      }
+    }, 300);
+  };
+
+  const clearSearch = () => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchIdRef.current++;
+    setSearchKeyword("");
+    setSearchResults([]);
+    setIsSearching(false);
+  };
+
+  const inSearchMode = searchKeyword.trim().length > 0;
 
   const handleImageSelected = async (base64: string) => {
     if (directories.length === 0) {
@@ -106,6 +149,59 @@ export default function HomePage() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 -mt-2">
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            value={searchKeyword}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="搜索题目、知识点..."
+            className="w-full h-10 pl-9 pr-9 rounded-xl border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+            data-testid="input-search"
+          />
+          {searchKeyword && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground touch-manipulation"
+              data-testid="button-clear-search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {inSearchMode ? (
+          <div className="mb-4">
+            <h2 className="text-sm font-medium text-muted-foreground mb-3" data-testid="text-search-status">
+              {isSearching
+                ? "搜索中..."
+                : `找到 ${searchResults.length} 个结果`}
+            </h2>
+            {!isSearching && searchResults.length === 0 ? (
+              <Card className="p-8 text-center border-card-border">
+                <Search className="w-10 h-10 mx-auto text-muted-foreground/40 mb-3" />
+                <p className="text-sm text-muted-foreground" data-testid="text-no-results">
+                  没有找到相关题目
+                </p>
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  试试其他关键词
+                </p>
+              </Card>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {searchResults.map((q) => (
+                  <QuestionCard
+                    key={q.id}
+                    question={q}
+                    onClick={() => navigate(`/question/${q.id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+        <>
         <div className="grid grid-cols-3 gap-3 mb-6">
           <Card className="p-3 text-center border-card-border">
             <div className="flex items-center justify-center w-8 h-8 mx-auto rounded-lg bg-primary/10 mb-1.5">
@@ -183,36 +279,38 @@ export default function HomePage() {
             </div>
           )}
         </div>
-      </div>
+        </>
+        )}
 
-      <Dialog open={showDirSelect} onOpenChange={setShowDirSelect}>
-        <DialogContent className="max-w-[320px] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>选择保存目录</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4 pt-2">
-            <Select value={selectedDirId} onValueChange={setSelectedDirId}>
-              <SelectTrigger data-testid="select-directory">
-                <SelectValue placeholder="选择目录" />
-              </SelectTrigger>
-              <SelectContent>
-                {directories.map((dir) => (
-                  <SelectItem key={dir.id} value={dir.id}>
-                    {dir.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={handleConfirmUpload}
-              disabled={!selectedDirId}
-              data-testid="button-confirm-upload"
-            >
-              确认上传并解析
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        <Dialog open={showDirSelect} onOpenChange={setShowDirSelect}>
+          <DialogContent className="max-w-[320px] rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>选择保存目录</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 pt-2">
+              <Select value={selectedDirId} onValueChange={setSelectedDirId}>
+                <SelectTrigger data-testid="select-directory">
+                  <SelectValue placeholder="选择目录" />
+                </SelectTrigger>
+                <SelectContent>
+                  {directories.map((dir) => (
+                    <SelectItem key={dir.id} value={dir.id}>
+                      {dir.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleConfirmUpload}
+                disabled={!selectedDirId}
+                data-testid="button-confirm-upload"
+              >
+                确认上传并解析
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }

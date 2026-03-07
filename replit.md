@@ -20,8 +20,13 @@ A mobile-first web app for managing and analyzing exam errors. Users can upload 
 - `client/src/components/ImageUploader.tsx` - Camera/gallery image upload
 - `client/src/components/QuestionCard.tsx` - Question display card
 
+## Features
+- Dark mode toggle (Profile page → 外观模式)
+- Image crop/preview before upload
+- Search questions by keyword (题目文本, 知识点, 选项解析) with debounce
+
 ## Pages
-- `/` - Home page with stats, upload, recent questions
+- `/` - Home page with search bar, stats, upload, recent questions
 - `/directories` - Directory management (create, rename, delete, 3-level hierarchy)
 - `/directory/:id` - Directory detail with questions, multi-select, knowledge graph
 - `/question/:id` - Question detail with AI analysis
@@ -38,6 +43,7 @@ A mobile-first web app for managing and analyzing exam errors. Users can upload 
 - html-to-image (PNG export)
 - uuid + @types/uuid (UUID generation)
 - @google/genai (Gemini SDK via Replit AI Integrations)
+- react-image-crop (image cropping)
 
 ## Notes
 - All UI text is in Simplified Chinese

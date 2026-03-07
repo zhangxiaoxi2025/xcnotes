@@ -120,4 +120,28 @@ export const questionService = {
     const all = await db.questions.toArray();
     return all.sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
   },
+
+  async search(keyword: string): Promise<Question[]> {
+    if (!keyword.trim()) return [];
+    const lower = keyword.trim().toLowerCase();
+    const all = await db.questions.toArray();
+    const matched = all.filter((q) => {
+      try {
+        const analysis = JSON.parse(q.analysisJson);
+        const text = (analysis.question_text || "").toLowerCase();
+        if (text.includes(lower)) return true;
+        const points: string[] = analysis.knowledge_points || [];
+        if (points.some((p: string) => p.toLowerCase().includes(lower))) return true;
+        const options: any[] = analysis.options_analysis || [];
+        if (options.some((o: any) =>
+          (o.related_knowledge || "").toLowerCase().includes(lower) ||
+          (o.why_wrong || "").toLowerCase().includes(lower)
+        )) return true;
+        return false;
+      } catch {
+        return false;
+      }
+    });
+    return matched.sort((a, b) => b.createdAt - a.createdAt);
+  },
 };
