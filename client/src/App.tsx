@@ -10,6 +10,7 @@ import DirectoriesPage from "@/pages/DirectoriesPage";
 import DirectoryDetailPage from "@/pages/DirectoryDetailPage";
 import QuestionDetailPage from "@/pages/QuestionDetailPage";
 import KnowledgeGraphPage from "@/pages/KnowledgeGraphPage";
+import ReviewPage from "@/pages/ReviewPage";
 import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/not-found";
 
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/directory/:id" component={DirectoryDetailPage} />
       <Route path="/question/:id" component={QuestionDetailPage} />
       <Route path="/knowledge-graph" component={KnowledgeGraphPage} />
+      <Route path="/review" component={ReviewPage} />
       <Route path="/profile" component={ProfilePage} />
       <Route component={NotFound} />
     </Switch>

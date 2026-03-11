@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { questionService, directoryService } from "@/lib/services";
-import { type Question, type Directory, type AnalysisJson } from "@/lib/db";
+import { type Question, type Directory, type AnalysisJson, type QuestionStatus } from "@/lib/db";
 import {
   ArrowLeft,
   Trash2,
@@ -14,7 +14,16 @@ import {
   Lightbulb,
   BookOpen,
   ImageIcon,
+  BookmarkPlus,
+  AlertCircle,
+  BookmarkX,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +73,19 @@ export default function QuestionDetailPage() {
     analysis = null;
   }
 
+  const handleSetStatus = async (status: QuestionStatus) => {
+    await questionService.setStatus(question.id, status);
+    setQuestion({ ...question, status });
+    const labels: Record<QuestionStatus, string> = {
+      mastered: "已标记为「已掌握」",
+      review: "已标记为「需复习」",
+      none: "已取消标记",
+    };
+    toast({ title: labels[status] });
+  };
+
+  const currentStatus = question.status || "none";
+
   const handleDelete = async () => {
     await questionService.delete(question.id);
     toast({ title: "删除成功" });
@@ -98,14 +120,68 @@ export default function QuestionDetailPage() {
             </Button>
             <h1 className="text-lg font-semibold">题目详情</h1>
           </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setShowDeleteDialog(true)}
-            data-testid="button-delete-question"
-          >
-            <Trash2 className="w-5 h-5 text-destructive" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  data-testid="button-mark-status"
+                  className={
+                    currentStatus === "mastered"
+                      ? "text-green-600 dark:text-green-400"
+                      : currentStatus === "review"
+                      ? "text-orange-600 dark:text-orange-400"
+                      : ""
+                  }
+                >
+                  {currentStatus === "mastered" ? (
+                    <CheckCircle2 className="w-5 h-5" />
+                  ) : currentStatus === "review" ? (
+                    <AlertCircle className="w-5 h-5" />
+                  ) : (
+                    <BookmarkPlus className="w-5 h-5" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => handleSetStatus("mastered")}
+                  className="gap-2"
+                  data-testid="menu-mark-mastered"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  已掌握
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleSetStatus("review")}
+                  className="gap-2"
+                  data-testid="menu-mark-review"
+                >
+                  <AlertCircle className="w-4 h-4 text-orange-600" />
+                  需复习
+                </DropdownMenuItem>
+                {currentStatus !== "none" && (
+                  <DropdownMenuItem
+                    onClick={() => handleSetStatus("none")}
+                    className="gap-2"
+                    data-testid="menu-mark-none"
+                  >
+                    <BookmarkX className="w-4 h-4 text-muted-foreground" />
+                    取消标记
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setShowDeleteDialog(true)}
+              data-testid="button-delete-question"
+            >
+              <Trash2 className="w-5 h-5 text-destructive" />
+            </Button>
+          </div>
         </div>
       </div>
 

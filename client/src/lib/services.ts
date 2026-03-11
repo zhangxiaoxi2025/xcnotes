@@ -1,4 +1,4 @@
-import { db, generateId, type Directory, type Question } from "./db";
+import { db, generateId, type Directory, type Question, type QuestionStatus } from "./db";
 
 export const directoryService = {
   async getAll(): Promise<Directory[]> {
@@ -119,6 +119,19 @@ export const questionService = {
   async getRecentQuestions(limit: number): Promise<Question[]> {
     const all = await db.questions.toArray();
     return all.sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
+  },
+
+  async setStatus(id: string, status: QuestionStatus): Promise<void> {
+    await db.questions.update(id, { status });
+  },
+
+  async getByStatus(status: "mastered" | "review"): Promise<Question[]> {
+    return db.questions.where("status").equals(status).toArray()
+      .then(arr => arr.sort((a, b) => b.createdAt - a.createdAt));
+  },
+
+  async getStatusCount(status: "mastered" | "review"): Promise<number> {
+    return db.questions.where("status").equals(status).count();
   },
 
   async search(keyword: string): Promise<Question[]> {

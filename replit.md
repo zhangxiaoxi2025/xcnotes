@@ -24,18 +24,21 @@ A mobile-first web app for managing and analyzing exam errors. Users can upload 
 - Dark mode toggle (Profile page → 外观模式)
 - Image crop/preview before upload
 - Search questions by keyword (题目文本, 知识点, 选项解析) with debounce
+- Question marking: 已掌握 (mastered, green) / 需复习 (review, orange) status on each question
+- Review page (/review) with filter tabs to view marked questions
 
 ## Pages
 - `/` - Home page with search bar, stats, upload, recent questions
 - `/directories` - Directory management (create, rename, delete, 3-level hierarchy)
 - `/directory/:id` - Directory detail with questions, multi-select, knowledge graph
-- `/question/:id` - Question detail with AI analysis
+- `/question/:id` - Question detail with AI analysis + status marking
 - `/knowledge-graph` - Knowledge graph visualization with export
+- `/review` - Review page with filter tabs (需复习 / 已掌握)
 - `/profile` - Profile with data stats and clear all data
 
 ## Data Models
 - **Directory**: id (UUID), name, parentId, createdAt
-- **Question**: id (UUID), directoryId, imageBase64, analysisJson, createdAt
+- **Question**: id (UUID), directoryId, imageBase64, analysisJson, createdAt, status? ("none" | "mastered" | "review")
 
 ## Dependencies Added
 - dexie (IndexedDB wrapper)
@@ -47,6 +50,7 @@ A mobile-first web app for managing and analyzing exam errors. Users can upload 
 
 ## Notes
 - All UI text is in Simplified Chinese
-- Data stored entirely in browser IndexedDB
+- Data stored entirely in browser IndexedDB (Dexie v2 schema)
 - Backend only serves as Gemini API proxy
 - Image body limit set to 50mb in Express
+- Bottom navigation has 4 tabs: 首页, 目录, 复习本, 我的

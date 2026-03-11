@@ -22,12 +22,15 @@ export interface AnalysisJson {
   options_analysis: OptionAnalysis[];
 }
 
+export type QuestionStatus = "none" | "mastered" | "review";
+
 export interface Question {
   id: string;
   directoryId: string;
   imageBase64: string;
   analysisJson: string;
   createdAt: number;
+  status?: QuestionStatus;
 }
 
 class ErrorBookDB extends Dexie {
@@ -39,6 +42,14 @@ class ErrorBookDB extends Dexie {
     this.version(1).stores({
       directories: "id, name, parentId, createdAt",
       questions: "id, directoryId, createdAt",
+    });
+    this.version(2).stores({
+      directories: "id, name, parentId, createdAt",
+      questions: "id, directoryId, createdAt, status",
+    }).upgrade((tx) => {
+      return tx.table("questions").toCollection().modify((q) => {
+        if (!q.status) q.status = "none";
+      });
     });
   }
 }

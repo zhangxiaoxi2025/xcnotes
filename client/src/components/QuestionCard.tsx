@@ -2,7 +2,7 @@ import { type Question, type AnalysisJson } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BookOpen, Clock } from "lucide-react";
+import { Clock, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface QuestionCardProps {
   question: Question;
@@ -75,9 +75,23 @@ export default function QuestionCard({
               </Badge>
             ))}
           </div>
-          <div className="flex items-center gap-1 mt-1.5 text-muted-foreground">
-            <Clock className="w-3 h-3" />
-            <span className="text-[10px]">{formattedDate}</span>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Clock className="w-3 h-3" />
+              <span className="text-[10px]">{formattedDate}</span>
+            </div>
+            {question.status === "mastered" && (
+              <Badge className="text-[10px] px-1.5 py-0 bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 gap-0.5" variant="outline" data-testid={`badge-mastered-${question.id}`}>
+                <CheckCircle2 className="w-2.5 h-2.5" />
+                已掌握
+              </Badge>
+            )}
+            {question.status === "review" && (
+              <Badge className="text-[10px] px-1.5 py-0 bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20 gap-0.5" variant="outline" data-testid={`badge-review-${question.id}`}>
+                <AlertCircle className="w-2.5 h-2.5" />
+                需复习
+              </Badge>
+            )}
           </div>
         </div>
       </div>

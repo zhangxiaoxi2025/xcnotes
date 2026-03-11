@@ -1,9 +1,10 @@
 import { useLocation } from "wouter";
-import { Home, FolderOpen, User } from "lucide-react";
+import { Home, FolderOpen, BookMarked, User } from "lucide-react";
 
 const navItems = [
   { path: "/", label: "首页", icon: Home },
   { path: "/directories", label: "目录", icon: FolderOpen },
+  { path: "/review", label: "复习本", icon: BookMarked },
   { path: "/profile", label: "我的", icon: User },
 ];
 
