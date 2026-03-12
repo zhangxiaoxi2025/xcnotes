@@ -81,7 +81,7 @@ export default function ChatPanel({
     const loadMessages = async () => {
       const existing = await chatService.getByQuestion(questionId);
       if (existing.length === 0) {
-        const introMsg = await chatService.saveMessage(questionId, "model", buildIntroText());
+        const introMsg = await chatService.saveMessage(questionId, "model", buildIntroText(), questionImageBase64);
         setMessages([introMsg]);
       } else {
         setMessages(existing);
@@ -148,7 +148,7 @@ export default function ChatPanel({
 
   const handleClearChat = async () => {
     await chatService.clearByQuestion(questionId);
-    const introMsg = await chatService.saveMessage(questionId, "model", buildIntroText());
+    const introMsg = await chatService.saveMessage(questionId, "model", buildIntroText(), questionImageBase64);
     setMessages([introMsg]);
     setShowClearDialog(false);
   };
