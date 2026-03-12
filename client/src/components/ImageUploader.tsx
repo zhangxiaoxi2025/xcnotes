@@ -12,7 +12,9 @@ import {
 
 interface ImageUploaderProps {
   onImageSelected: (base64: string) => void;
+  onImagesSelected?: (base64List: string[]) => void;
   isUploading?: boolean;
+  uploadProgress?: { current: number; total: number } | null;
 }
 
 function getCroppedImageBase64(
@@ -42,9 +44,22 @@ function getCroppedImageBase64(
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
+const MAX_BATCH = 10;
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("读取文件失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ImageUploader({
   onImageSelected,
+  onImagesSelected,
   isUploading = false,
+  uploadProgress = null,
 }: ImageUploaderProps) {
   const [showMethodDialog, setShowMethodDialog] = useState(false);
   const [showCropDialog, setShowCropDialog] = useState(false);
@@ -55,7 +70,7 @@ export default function ImageUploader({
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCameraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -69,6 +84,48 @@ export default function ImageUploader({
     };
     reader.readAsDataURL(file);
     e.target.value = "";
+  };
+
+  const handleGalleryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setShowMethodDialog(false);
+
+    if (files.length === 1 && !onImagesSelected) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setRawImage(reader.result as string);
+        setCrop(undefined);
+        setCompletedCrop(undefined);
+        setShowCropDialog(true);
+      };
+      reader.readAsDataURL(files[0]);
+      e.target.value = "";
+      return;
+    }
+
+    const fileList = Array.from(files).slice(0, MAX_BATCH);
+    const base64List: string[] = [];
+    for (const file of fileList) {
+      try {
+        const b64 = await readFileAsBase64(file);
+        base64List.push(b64);
+      } catch {
+      }
+    }
+    e.target.value = "";
+
+    if (base64List.length === 1 && !onImagesSelected) {
+      setRawImage(base64List[0]);
+      setCrop(undefined);
+      setCompletedCrop(undefined);
+      setShowCropDialog(true);
+    } else if (base64List.length > 0 && onImagesSelected) {
+      onImagesSelected(base64List);
+    } else if (base64List.length === 1) {
+      onImageSelected(base64List[0]);
+    }
   };
 
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -108,26 +165,41 @@ export default function ImageUploader({
     setCompletedCrop(undefined);
   };
 
+  const progressPercent = uploadProgress
+    ? Math.round((uploadProgress.current / uploadProgress.total) * 100)
+    : 0;
+
   return (
     <>
       <Button
         onClick={() => setShowMethodDialog(true)}
         disabled={isUploading}
-        className="w-full h-32 border-2 border-dashed border-primary/30 bg-primary/5 text-primary rounded-2xl flex flex-col gap-2"
+        className="w-full h-32 border-2 border-dashed border-primary/30 bg-primary/5 text-primary rounded-2xl flex flex-col gap-2 relative overflow-hidden"
         variant="ghost"
         data-testid="button-upload-trigger"
       >
         {isUploading ? (
           <>
+            {uploadProgress && (
+              <div
+                className="absolute bottom-0 left-0 h-1.5 bg-primary/40 transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+                data-testid="progress-bar"
+              />
+            )}
             <Loader2 className="w-8 h-8 animate-spin" />
-            <span className="text-sm font-medium">AI 正在解析中...</span>
+            <span className="text-sm font-medium" data-testid="text-upload-progress">
+              {uploadProgress
+                ? `正在解析 ${uploadProgress.current} / ${uploadProgress.total}`
+                : "AI 正在解析中..."}
+            </span>
           </>
         ) : (
           <>
             <ImagePlus className="w-8 h-8" />
             <span className="text-sm font-medium">上传题目图片</span>
             <span className="text-xs text-muted-foreground">
-              拍照或从相册选择
+              拍照或从相册选择（支持多选）
             </span>
           </>
         )}
@@ -155,7 +227,7 @@ export default function ImageUploader({
               data-testid="button-gallery"
             >
               <ImagePlus className="w-5 h-5 text-primary" />
-              从相册选择
+              从相册选择（可多选）
             </Button>
           </div>
         </DialogContent>
@@ -228,14 +300,15 @@ export default function ImageUploader({
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={handleFileChange}
+        onChange={handleCameraChange}
       />
       <input
         ref={galleryRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
-        onChange={handleFileChange}
+        onChange={handleGalleryChange}
       />
     </>
   );

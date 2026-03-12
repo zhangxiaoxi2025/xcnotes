@@ -29,6 +29,7 @@ import {
   ArrowRight,
   Search,
   X,
+  Images,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -47,6 +48,11 @@ export default function HomePage() {
   const [isSearching, setIsSearching] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchIdRef = useRef(0);
+
+  const [pendingBatchImages, setPendingBatchImages] = useState<string[]>([]);
+  const [showBatchPreview, setShowBatchPreview] = useState(false);
+  const [batchDirId, setBatchDirId] = useState<string>("");
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
   const loadData = async () => {
     const [recent, dirs, count] = await Promise.all([
@@ -100,18 +106,38 @@ export default function HomePage() {
 
   const inSearchMode = searchKeyword.trim().length > 0;
 
-  const handleImageSelected = async (base64: string) => {
+  const checkDirectories = (): boolean => {
     if (directories.length === 0) {
       toast({
         title: "请先创建目录",
         description: "请前往目录页面创建一个目录后再上传题目",
         variant: "destructive",
       });
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const handleImageSelected = async (base64: string) => {
+    if (!checkDirectories()) return;
     setPendingImage(base64);
     setSelectedDirId(directories[0].id);
     setShowDirSelect(true);
+  };
+
+  const handleImagesSelected = (base64List: string[]) => {
+    if (!checkDirectories()) return;
+    if (base64List.length === 1) {
+      handleImageSelected(base64List[0]);
+      return;
+    }
+    setPendingBatchImages(base64List);
+    setBatchDirId(directories[0].id);
+    setShowBatchPreview(true);
+  };
+
+  const removeBatchImage = (index: number) => {
+    setPendingBatchImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleConfirmUpload = async () => {
@@ -132,6 +158,46 @@ export default function HomePage() {
     } finally {
       setIsUploading(false);
       setPendingImage("");
+    }
+  };
+
+  const handleBatchUpload = async () => {
+    if (!batchDirId || pendingBatchImages.length === 0) return;
+    const images = [...pendingBatchImages];
+    setShowBatchPreview(false);
+    setPendingBatchImages([]);
+    setIsUploading(true);
+    setUploadProgress({ current: 0, total: images.length });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < images.length; i++) {
+      setUploadProgress({ current: i + 1, total: images.length });
+      try {
+        const analysisJson = await analyzeQuestionImage(images[i]);
+        await questionService.create(batchDirId, images[i], analysisJson);
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+
+    setIsUploading(false);
+    setUploadProgress(null);
+    await loadData();
+
+    if (failCount === 0) {
+      toast({
+        title: "全部解析完成",
+        description: `成功解析并保存 ${successCount} 道题目`,
+      });
+    } else {
+      toast({
+        title: "批量解析完成",
+        description: `成功 ${successCount} 张，失败 ${failCount} 张`,
+        variant: failCount === images.length ? "destructive" : "default",
+      });
     }
   };
 
@@ -233,7 +299,9 @@ export default function HomePage() {
         <div className="mb-6">
           <ImageUploader
             onImageSelected={handleImageSelected}
+            onImagesSelected={handleImagesSelected}
             isUploading={isUploading}
+            uploadProgress={uploadProgress}
           />
         </div>
 
@@ -307,6 +375,87 @@ export default function HomePage() {
               >
                 确认上传并解析
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showBatchPreview} onOpenChange={(open) => {
+          if (!open) {
+            setShowBatchPreview(false);
+            setPendingBatchImages([]);
+          }
+        }}>
+          <DialogContent className="max-w-[95vw] sm:max-w-[500px] rounded-2xl p-4">
+            <DialogHeader>
+              <DialogTitle className="text-center flex items-center justify-center gap-2">
+                <Images className="w-5 h-5 text-primary" />
+                批量上传预览
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4">
+              <p className="text-xs text-muted-foreground text-center" data-testid="text-batch-count">
+                已选择 {pendingBatchImages.length} 张图片（最多 10 张）
+              </p>
+
+              <div className="grid grid-cols-3 gap-2 max-h-[40vh] overflow-auto" data-testid="batch-preview-grid">
+                {pendingBatchImages.map((img, idx) => (
+                  <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden bg-muted/30 border border-border">
+                    <img
+                      src={img}
+                      alt={`图片 ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                      data-testid={`batch-image-${idx}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeBatchImage(idx)}
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity touch-manipulation"
+                      style={{ opacity: 1 }}
+                      data-testid={`button-remove-batch-${idx}`}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] text-center py-0.5">
+                      {idx + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Select value={batchDirId} onValueChange={setBatchDirId}>
+                <SelectTrigger data-testid="select-batch-directory">
+                  <SelectValue placeholder="选择保存目录" />
+                </SelectTrigger>
+                <SelectContent>
+                  {directories.map((dir) => (
+                    <SelectItem key={dir.id} value={dir.id}>
+                      {dir.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowBatchPreview(false);
+                    setPendingBatchImages([]);
+                  }}
+                  data-testid="button-cancel-batch"
+                >
+                  取消
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handleBatchUpload}
+                  disabled={!batchDirId || pendingBatchImages.length === 0}
+                  data-testid="button-start-batch"
+                >
+                  开始解析 ({pendingBatchImages.length} 张)
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

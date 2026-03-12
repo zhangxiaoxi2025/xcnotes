@@ -22,7 +22,8 @@ A mobile-first web app for managing and analyzing exam errors. Users can upload 
 
 ## Features
 - Dark mode toggle (Profile page → 外观模式)
-- Image crop/preview before upload
+- Image crop/preview before upload (single photo from camera)
+- Batch upload: select multiple images from gallery (up to 10), preview grid with remove, sequential AI analysis with progress bar
 - Search questions by keyword (题目文本, 知识点, 选项解析) with debounce
 - Question marking: 已掌握 (mastered, green) / 需复习 (review, orange) status on each question
 - Review page (/review) with filter tabs to view marked questions
