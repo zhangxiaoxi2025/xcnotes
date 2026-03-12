@@ -300,6 +300,7 @@ export default function HomePage() {
           <ImageUploader
             onImageSelected={handleImageSelected}
             onImagesSelected={handleImagesSelected}
+            onError={(msg) => toast({ title: msg, variant: "destructive" })}
             isUploading={isUploading}
             uploadProgress={uploadProgress}
           />

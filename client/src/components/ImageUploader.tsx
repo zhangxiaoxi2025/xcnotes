@@ -13,6 +13,7 @@ import {
 interface ImageUploaderProps {
   onImageSelected: (base64: string) => void;
   onImagesSelected?: (base64List: string[]) => void;
+  onError?: (message: string) => void;
   isUploading?: boolean;
   uploadProgress?: { current: number; total: number } | null;
 }
@@ -58,6 +59,7 @@ function readFileAsBase64(file: File): Promise<string> {
 export default function ImageUploader({
   onImageSelected,
   onImagesSelected,
+  onError,
   isUploading = false,
   uploadProgress = null,
 }: ImageUploaderProps) {
@@ -86,13 +88,15 @@ export default function ImageUploader({
     e.target.value = "";
   };
 
-  const handleGalleryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const fileList = Array.from(files).slice(0, MAX_BATCH);
+    e.target.value = "";
     setShowMethodDialog(false);
 
-    if (files.length === 1) {
+    if (fileList.length === 1) {
       const reader = new FileReader();
       reader.onload = () => {
         setRawImage(reader.result as string);
@@ -100,30 +104,30 @@ export default function ImageUploader({
         setCompletedCrop(undefined);
         setShowCropDialog(true);
       };
-      reader.readAsDataURL(files[0]);
-      e.target.value = "";
+      reader.readAsDataURL(fileList[0]);
       return;
     }
 
-    const fileList = Array.from(files).slice(0, MAX_BATCH);
-    const base64List: string[] = [];
-    for (const file of fileList) {
-      try {
-        const b64 = await readFileAsBase64(file);
-        base64List.push(b64);
-      } catch {
-      }
-    }
-    e.target.value = "";
+    Promise.allSettled(fileList.map((f) => readFileAsBase64(f)))
+      .then((results) => {
+        const base64List = results
+          .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
+          .map((r) => r.value);
 
-    if (base64List.length > 1 && onImagesSelected) {
-      onImagesSelected(base64List);
-    } else if (base64List.length === 1) {
-      setRawImage(base64List[0]);
-      setCrop(undefined);
-      setCompletedCrop(undefined);
-      setShowCropDialog(true);
-    }
+        if (base64List.length === 0) {
+          onError?.("图片读取失败，请重试");
+          return;
+        }
+
+        if (base64List.length > 1 && onImagesSelected) {
+          onImagesSelected(base64List);
+        } else if (base64List.length >= 1) {
+          onImagesSelected ? onImagesSelected(base64List) : onImageSelected(base64List[0]);
+        }
+      })
+      .catch(() => {
+        onError?.("图片读取失败，请重试");
+      });
   };
 
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
