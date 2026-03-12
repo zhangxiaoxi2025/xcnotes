@@ -171,7 +171,7 @@ export default function ChatPanel({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background" data-testid="chat-panel">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-background" data-testid="chat-panel">
       <div className="flex items-center justify-between px-4 h-14 border-b border-border bg-background/95 backdrop-blur-md flex-shrink-0">
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-primary" />
@@ -307,7 +307,7 @@ export default function ChatPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="border-t border-border bg-background flex-shrink-0 px-3 py-2 pb-safe">
+      <div className="border-t border-border bg-background flex-shrink-0 px-3 py-2 pb-4">
         {attachedImage && (
           <div className="relative inline-block mb-2">
             <img
