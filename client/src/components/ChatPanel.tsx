@@ -58,10 +58,36 @@ export default function ChatPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  const buildIntroText = (): string => {
+    let introText = "你好！我是你的 AI 学习助手。我已经阅读了这道题目的信息：\n\n";
+    try {
+      const parsed = JSON.parse(questionAnalysis);
+      if (parsed.question_text) {
+        introText += `📝 题目：${parsed.question_text}\n\n`;
+      }
+      if (parsed.knowledge_points?.length) {
+        introText += `📚 知识点：${parsed.knowledge_points.join("、")}\n\n`;
+      }
+      if (parsed.humorous_explanation) {
+        introText += `💡 解析摘要：${parsed.humorous_explanation}\n\n`;
+      }
+    } catch {}
+    introText += "你可以：\n• 指出我的解析错误，我会重新分析\n• 上传教材截图让我参考\n• 针对某个知识点深入提问\n\n有什么问题尽管问我吧！";
+    return introText;
+  };
+
   useEffect(() => {
-    if (open) {
-      chatService.getByQuestion(questionId).then(setMessages);
-    }
+    if (!open) return;
+    const loadMessages = async () => {
+      const existing = await chatService.getByQuestion(questionId);
+      if (existing.length === 0) {
+        const introMsg = await chatService.saveMessage(questionId, "model", buildIntroText());
+        setMessages([introMsg]);
+      } else {
+        setMessages(existing);
+      }
+    };
+    loadMessages();
   }, [open, questionId]);
 
   useEffect(() => {
@@ -122,7 +148,8 @@ export default function ChatPanel({
 
   const handleClearChat = async () => {
     await chatService.clearByQuestion(questionId);
-    setMessages([]);
+    const introMsg = await chatService.saveMessage(questionId, "model", buildIntroText());
+    setMessages([introMsg]);
     setShowClearDialog(false);
   };
 
