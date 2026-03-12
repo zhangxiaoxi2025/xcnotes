@@ -92,7 +92,7 @@ export default function ImageUploader({
 
     setShowMethodDialog(false);
 
-    if (files.length === 1 && !onImagesSelected) {
+    if (files.length === 1) {
       const reader = new FileReader();
       reader.onload = () => {
         setRawImage(reader.result as string);
@@ -116,15 +116,13 @@ export default function ImageUploader({
     }
     e.target.value = "";
 
-    if (base64List.length === 1 && !onImagesSelected) {
+    if (base64List.length > 1 && onImagesSelected) {
+      onImagesSelected(base64List);
+    } else if (base64List.length === 1) {
       setRawImage(base64List[0]);
       setCrop(undefined);
       setCompletedCrop(undefined);
       setShowCropDialog(true);
-    } else if (base64List.length > 0 && onImagesSelected) {
-      onImagesSelected(base64List);
-    } else if (base64List.length === 1) {
-      onImageSelected(base64List[0]);
     }
   };
 
