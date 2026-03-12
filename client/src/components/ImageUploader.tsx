@@ -89,45 +89,49 @@ export default function ImageUploader({
   };
 
   const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    try {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
 
-    const fileList = Array.from(files).slice(0, MAX_BATCH);
-    e.target.value = "";
-    setShowMethodDialog(false);
+      const fileList = Array.from(files).slice(0, MAX_BATCH);
+      e.target.value = "";
+      setShowMethodDialog(false);
 
-    if (fileList.length === 1) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setRawImage(reader.result as string);
-        setCrop(undefined);
-        setCompletedCrop(undefined);
-        setShowCropDialog(true);
-      };
-      reader.readAsDataURL(fileList[0]);
-      return;
-    }
+      if (fileList.length === 1) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          setRawImage(reader.result as string);
+          setCrop(undefined);
+          setCompletedCrop(undefined);
+          setShowCropDialog(true);
+        };
+        reader.readAsDataURL(fileList[0]);
+        return;
+      }
 
-    Promise.allSettled(fileList.map((f) => readFileAsBase64(f)))
-      .then((results) => {
-        const base64List = results
-          .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
-          .map((r) => r.value);
+      Promise.allSettled(fileList.map((f) => readFileAsBase64(f)))
+        .then((results) => {
+          const base64List = results
+            .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
+            .map((r) => r.value);
 
-        if (base64List.length === 0) {
+          if (base64List.length === 0) {
+            onError?.("图片读取失败，请重试");
+            return;
+          }
+
+          if (base64List.length > 1 && onImagesSelected) {
+            onImagesSelected(base64List);
+          } else if (base64List.length >= 1) {
+            onImagesSelected ? onImagesSelected(base64List) : onImageSelected(base64List[0]);
+          }
+        })
+        .catch(() => {
           onError?.("图片读取失败，请重试");
-          return;
-        }
-
-        if (base64List.length > 1 && onImagesSelected) {
-          onImagesSelected(base64List);
-        } else if (base64List.length >= 1) {
-          onImagesSelected ? onImagesSelected(base64List) : onImageSelected(base64List[0]);
-        }
-      })
-      .catch(() => {
-        onError?.("图片读取失败，请重试");
-      });
+        });
+    } catch {
+      onError?.("图片读取失败，请重试");
+    }
   };
 
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
