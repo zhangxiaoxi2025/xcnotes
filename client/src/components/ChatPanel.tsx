@@ -81,7 +81,7 @@ export default function ChatPanel({
     const loadMessages = async () => {
       const existing = await chatService.getByQuestion(questionId);
       if (existing.length === 0) {
-        const introMsg = await chatService.saveMessage(questionId, "model", buildIntroText(), questionImageBase64);
+        const introMsg = await chatService.saveMessage(questionId, "model", buildIntroText());
         setMessages([introMsg]);
       } else {
         setMessages(existing);
@@ -126,7 +126,7 @@ export default function ChatPanel({
       const history: ChatHistoryItem[] = allMessages.map((m) => ({
         role: m.role,
         text: m.text,
-        imageBase64: m.imageBase64,
+        imageBase64: m.role === "user" ? m.imageBase64 : undefined,
       }));
 
       const reply = await chatWithQuestion(history, questionImageBase64, questionAnalysis);
@@ -148,7 +148,7 @@ export default function ChatPanel({
 
   const handleClearChat = async () => {
     await chatService.clearByQuestion(questionId);
-    const introMsg = await chatService.saveMessage(questionId, "model", buildIntroText(), questionImageBase64);
+    const introMsg = await chatService.saveMessage(questionId, "model", buildIntroText());
     setMessages([introMsg]);
     setShowClearDialog(false);
   };
@@ -199,6 +199,27 @@ export default function ChatPanel({
           >
             <ChevronDown className="w-5 h-5" />
           </Button>
+        </div>
+      </div>
+
+      <div className="px-4 py-2 border-b border-border bg-muted/30 flex items-center gap-3 flex-shrink-0">
+        <img
+          src={questionImageBase64}
+          alt="原题图片"
+          className="w-12 h-12 rounded-lg object-cover border border-border flex-shrink-0"
+          data-testid="img-question-context"
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium truncate">当前题目</p>
+          <p className="text-[11px] text-muted-foreground truncate">
+            {(() => {
+              try {
+                return JSON.parse(questionAnalysis)?.question_text?.slice(0, 50) || "题目图片已加载";
+              } catch {
+                return "题目图片已加载";
+              }
+            })()}
+          </p>
         </div>
       </div>
 
