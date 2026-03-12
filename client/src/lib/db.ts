@@ -33,9 +33,21 @@ export interface Question {
   status?: QuestionStatus;
 }
 
+export type ChatRole = "user" | "model";
+
+export interface ChatMessage {
+  id: string;
+  questionId: string;
+  role: ChatRole;
+  text: string;
+  imageBase64?: string;
+  createdAt: number;
+}
+
 class ErrorBookDB extends Dexie {
   directories!: Table<Directory, string>;
   questions!: Table<Question, string>;
+  chatMessages!: Table<ChatMessage, string>;
 
   constructor() {
     super("SmartErrorBook");
@@ -50,6 +62,11 @@ class ErrorBookDB extends Dexie {
       return tx.table("questions").toCollection().modify((q) => {
         if (!q.status) q.status = "none";
       });
+    });
+    this.version(3).stores({
+      directories: "id, name, parentId, createdAt",
+      questions: "id, directoryId, createdAt, status",
+      chatMessages: "id, questionId, createdAt",
     });
   }
 }

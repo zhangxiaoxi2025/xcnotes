@@ -12,13 +12,14 @@ A mobile-first web app for managing and analyzing exam errors. Users can upload 
 - **Export**: html-to-image for PNG export
 
 ## Key Files
-- `client/src/lib/db.ts` - Dexie.js database schema (directories, questions)
-- `client/src/lib/services.ts` - Data service layer (CRUD operations)
+- `client/src/lib/db.ts` - Dexie.js database schema (directories, questions, chatMessages)
+- `client/src/lib/services.ts` - Data service layer (CRUD operations + chatService)
 - `client/src/lib/gemini.ts` - Frontend API calls to backend Gemini proxy
-- `server/routes.ts` - Backend Gemini API proxy endpoints (/api/analyze, /api/knowledge-graph)
+- `server/routes.ts` - Backend Gemini API proxy endpoints (/api/analyze, /api/knowledge-graph, /api/chat)
 - `client/src/components/BottomNav.tsx` - Mobile bottom navigation
 - `client/src/components/ImageUploader.tsx` - Camera/gallery image upload
 - `client/src/components/QuestionCard.tsx` - Question display card
+- `client/src/components/ChatPanel.tsx` - AI chat panel (full-screen overlay from question detail)
 
 ## Features
 - Dark mode toggle (Profile page → 外观模式)
@@ -27,6 +28,7 @@ A mobile-first web app for managing and analyzing exam errors. Users can upload 
 - Search questions by keyword (题目文本, 知识点, 选项解析) with debounce
 - Question marking: 已掌握 (mastered, green) / 需复习 (review, orange) status on each question
 - Review page (/review) with filter tabs to view marked questions
+- AI chat: per-question multi-turn discussion with Gemini, supports image attachments, persisted in IndexedDB
 
 ## Pages
 - `/` - Home page with search bar, stats, upload, recent questions
@@ -40,6 +42,7 @@ A mobile-first web app for managing and analyzing exam errors. Users can upload 
 ## Data Models
 - **Directory**: id (UUID), name, parentId, createdAt
 - **Question**: id (UUID), directoryId, imageBase64, analysisJson, createdAt, status? ("none" | "mastered" | "review")
+- **ChatMessage**: id (UUID), questionId, role ("user" | "model"), text, imageBase64?, createdAt
 
 ## Dependencies Added
 - dexie (IndexedDB wrapper)
@@ -51,7 +54,7 @@ A mobile-first web app for managing and analyzing exam errors. Users can upload 
 
 ## Notes
 - All UI text is in Simplified Chinese
-- Data stored entirely in browser IndexedDB (Dexie v2 schema)
+- Data stored entirely in browser IndexedDB (Dexie v3 schema)
 - Backend only serves as Gemini API proxy
 - Image body limit set to 50mb in Express
 - Bottom navigation has 4 tabs: 首页, 目录, 复习本, 我的

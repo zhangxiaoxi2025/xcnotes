@@ -15,3 +15,23 @@ export async function generateKnowledgeSummary(knowledgePoints: string[]): Promi
   const res = await apiRequest("POST", "/api/knowledge-graph", { knowledgePoints });
   return res.json();
 }
+
+export interface ChatHistoryItem {
+  role: "user" | "model";
+  text: string;
+  imageBase64?: string;
+}
+
+export async function chatWithQuestion(
+  history: ChatHistoryItem[],
+  questionImageBase64: string,
+  questionAnalysis: string
+): Promise<string> {
+  const res = await apiRequest("POST", "/api/chat", {
+    history,
+    questionImageBase64,
+    questionAnalysis,
+  });
+  const data = await res.json();
+  return data.reply;
+}

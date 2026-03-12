@@ -36,6 +36,28 @@ const KNOWLEDGE_GRAPH_PROMPT = `你是一个教育专家。请根据以下知识
 3. links 表示知识点之间的关联关系
 4. 每个知识点都应该至少有一个关联`;
 
+const CHAT_SYSTEM_PROMPT = `你是一个专业的学科辅导老师，正在帮助学生分析一道题目。以下是题目的背景信息：
+
+【原题图片已提供】
+【AI原始解析】：
+{ANALYSIS}
+
+你的职责：
+1. 当学生指出AI解析有错误时，虚心接受并根据学生提供的正确信息重新解释
+2. 当学生上传教材截图或指南内容时，仔细阅读图片内容并结合题目进行分析
+3. 用通俗易懂的语言回答学生的疑问
+4. 回答要准确、有条理，必要时引用相关知识点
+5. 保持友好、耐心的态度
+
+请直接用文字回答，不需要返回JSON格式。`;
+
+function extractBase64(dataUrl: string): { data: string; mimeType: string } {
+  const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+  const mimeMatch = dataUrl.match(/^data:(image\/\w+);base64,/);
+  const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
+  return { data: base64Data, mimeType };
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -47,9 +69,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "缺少图片数据" });
       }
 
-      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-      const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
-      const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
+      const { data: base64Data, mimeType } = extractBase64(imageBase64);
 
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -134,6 +154,68 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Knowledge graph error:", error);
       res.status(500).json({ error: "知识图谱生成失败，请稍后重试" });
+    }
+  });
+
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { history, questionImageBase64, questionAnalysis } = req.body;
+      if (!history || !Array.isArray(history) || history.length === 0) {
+        return res.status(400).json({ error: "缺少对话历史" });
+      }
+
+      const systemPrompt = CHAT_SYSTEM_PROMPT.replace("{ANALYSIS}", questionAnalysis || "暂无解析");
+
+      const maxHistory = 20;
+      const trimmedHistory = history.slice(-maxHistory);
+
+      const contents: any[] = [];
+
+      const contextParts: any[] = [{ text: systemPrompt }];
+      if (questionImageBase64) {
+        const { data, mimeType } = extractBase64(questionImageBase64);
+        contextParts.push({ inlineData: { data, mimeType } });
+      }
+
+      let contextInjected = false;
+      for (let i = 0; i < trimmedHistory.length; i++) {
+        const msg = trimmedHistory[i];
+        const parts: any[] = [];
+
+        if (!contextInjected && msg.role === "user") {
+          parts.push(...contextParts);
+          contextInjected = true;
+        }
+
+        if (msg.text) {
+          parts.push({ text: msg.text });
+        }
+
+        if (msg.imageBase64) {
+          const { data, mimeType } = extractBase64(msg.imageBase64);
+          parts.push({ inlineData: { data, mimeType } });
+        }
+
+        if (parts.length > 0) {
+          contents.push({ role: msg.role, parts });
+        }
+      }
+
+      if (!contextInjected) {
+        contents.unshift({ role: "user", parts: [...contextParts, { text: "请分析这道题目" }] });
+      }
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents,
+        config: { maxOutputTokens: 4096 },
+      });
+
+      const reply = response.text || "抱歉，我暂时无法回答这个问题，请稍后重试。";
+      res.json({ reply });
+    } catch (error: any) {
+      console.error("Chat error:", error);
+      res.status(500).json({ error: "AI回复失败，请稍后重试" });
     }
   });
 

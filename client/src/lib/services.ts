@@ -1,4 +1,4 @@
-import { db, generateId, type Directory, type Question, type QuestionStatus } from "./db";
+import { db, generateId, type Directory, type Question, type QuestionStatus, type ChatMessage, type ChatRole } from "./db";
 
 export const directoryService = {
   async getAll(): Promise<Directory[]> {
@@ -64,6 +64,10 @@ export const directoryService = {
     for (const child of children) {
       await this.delete(child.id);
     }
+    const questions = await db.questions.where("directoryId").equals(id).toArray();
+    for (const q of questions) {
+      await chatService.clearByQuestion(q.id);
+    }
     await db.questions.where("directoryId").equals(id).delete();
     await db.directories.delete(id);
   },
@@ -102,10 +106,14 @@ export const questionService = {
 
   async delete(id: string): Promise<void> {
     await db.questions.delete(id);
+    await chatService.clearByQuestion(id);
   },
 
   async deleteMultiple(ids: string[]): Promise<void> {
     await db.questions.bulkDelete(ids);
+    for (const id of ids) {
+      await chatService.clearByQuestion(id);
+    }
   },
 
   async getAll(): Promise<Question[]> {
@@ -156,5 +164,29 @@ export const questionService = {
       }
     });
     return matched.sort((a, b) => b.createdAt - a.createdAt);
+  },
+};
+
+export const chatService = {
+  async getByQuestion(questionId: string): Promise<ChatMessage[]> {
+    return db.chatMessages.where("questionId").equals(questionId).toArray()
+      .then(arr => arr.sort((a, b) => a.createdAt - b.createdAt));
+  },
+
+  async saveMessage(questionId: string, role: ChatRole, text: string, imageBase64?: string): Promise<ChatMessage> {
+    const msg: ChatMessage = {
+      id: generateId(),
+      questionId,
+      role,
+      text,
+      imageBase64,
+      createdAt: Date.now(),
+    };
+    await db.chatMessages.add(msg);
+    return msg;
+  },
+
+  async clearByQuestion(questionId: string): Promise<void> {
+    await db.chatMessages.where("questionId").equals(questionId).delete();
   },
 };
